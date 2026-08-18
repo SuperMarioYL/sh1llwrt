@@ -1,0 +1,27 @@
+# build scratch
+.builder_*
+.build_metadata*
+.stage_*
+.spawn.*
+PUBLISH_BLOCKED.md
+BUILD_SETUP_NEXT_STEPS.md
+
+# editor / OS
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# go build artifacts
+/sh1llwrt
+/sh1llwrt.exe
+/dist/
+*.test
+*.out
+
+# model cache (downloaded GGUFs never ship)
+*.gguf
+
+# local tooling scratch
+.claude/
+CLAUDE.md

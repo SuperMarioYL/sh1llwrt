@@ -1,0 +1,51 @@
+version: 2
+
+project_name: sh1llwrt
+
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - id: sh1llwrt
+    main: ./cmd/sh1llwrt
+    binary: sh1llwrt
+    # m1 ships the pure-Go CLI-runner build (no vendored llama.cpp). m3 will
+    # add a CGO-enabled build target behind the `llama` tag for the single
+    # static binary; this pure-Go build is the release artifact for now.
+    env:
+      - CGO_ENABLED=0
+    goos: [linux, darwin]
+    goarch: [amd64, arm64]
+    ignore:
+      - goos: linux
+        goarch: arm64
+    ldflags:
+      - -s -w -X main.version={{ .Version }}
+
+archives:
+  - id: default
+    builds: [sh1llwrt]
+    name_template: >-
+      {{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}
+    format: tar.gz
+
+checksum:
+  name_template: 'checksums.txt'
+
+snapshot:
+  name_template: "{{ incpatch .Version }}-dev"
+
+changelog:
+  use: git
+  sort: asc
+  filters:
+    exclude:
+      - '^docs:'
+      - '^test:'
+      - '^chore:'
+
+release:
+  github:
+    owner: SuperMarioYL
+    name: sh1llwrt
