@@ -1,0 +1,13 @@
+{
+  "schema": 1,
+  "source_revision": "6a9f881568b989f5aac93fe32f3471d89ab0c571",
+  "scope": "Deterministic mock command proposals through the real prompt/parser/JSON path; no model download, inference process or proposed shell command is executed.",
+  "steps": [
+    {
+      "label": "Recorded run",
+      "body": "Deterministic mock command proposals through the real prompt/parser/JSON path; no model download, inference process or proposed shell command is executed.",
+      "command": "python3 examples/presentation_demo.py",
+      "output": "{\"command\":\"tar -xzf foo.tar.gz -C /tmp\",\"safe\":false,\"explain\":\"extract gzipped tarball into /tmp\"}\n{\"command\":\"kubectl get pods -n kube-system\",\"safe\":true,\"explain\":\"read-only pod listing\"}"
+    }
+  ]
+}

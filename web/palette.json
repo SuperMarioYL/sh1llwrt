@@ -1,0 +1,38 @@
+{
+  "mode": "auto",
+  "id": "9c56e6-e76ae5-b5acf6-168676f503b7",
+  "identity": "https://github.com/supermarioyl/sh1llwrt",
+  "primary": "#9c56e6",
+  "secondary": "#e76ae5",
+  "highlight": "#b5acf6",
+  "dark": {
+    "bg": "#070712",
+    "panel": "#0f101f",
+    "code": "#0f0d1d",
+    "ink": "#f0eefd",
+    "muted": "#a39cc4",
+    "line": "#281841",
+    "primary": "#9e59e6",
+    "secondary": "#e76ae5",
+    "highlight": "#b5acf6",
+    "accent": "#9e59e6",
+    "buttonStart": "#9754df",
+    "buttonEnd": "#b151af",
+    "buttonText": "#ffffff"
+  },
+  "light": {
+    "bg": "#fcf9fe",
+    "panel": "#faf7fe",
+    "code": "#f8f3fd",
+    "ink": "#1d1630",
+    "muted": "#635e88",
+    "line": "#e1cbf7",
+    "primary": "#904fd5",
+    "secondary": "#a74da6",
+    "highlight": "#716b9a",
+    "accent": "#904fd5",
+    "buttonStart": "#9754df",
+    "buttonEnd": "#b151af",
+    "buttonText": "#ffffff"
+  }
+}

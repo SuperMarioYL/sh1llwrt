@@ -1,0 +1,215 @@
+{
+  "schema": 3,
+  "name": "sh1llwrt",
+  "github": "https://github.com/SuperMarioYL/sh1llwrt",
+  "host": "sh1llwrt.lei6393.com",
+  "palette": "auto",
+  "lang": {
+    "primary": "en",
+    "toggle": true
+  },
+  "meta": {
+    "visual_style": "neon-particle",
+    "demo_source": "docs/demo-results.json"
+  },
+  "hero": {
+    "headline": {
+      "en": "Read the proposed shell command before running it.",
+      "zh": "先读建议的 Shell 命令，再决定执行。"
+    },
+    "sub": {
+      "en": "sh1llwrt combines a request with shell, working-directory and filename context, asks a local model for a structured reply, and prints the proposed command with an explanation.",
+      "zh": "sh1llwrt 将请求与 Shell、工作目录、文件名上下文组合，向本地模型请求结构化响应，再输出建议命令及解释。"
+    },
+    "href": "#quickstart"
+  },
+  "advantages": [
+    {
+      "title": {
+        "en": "Include shell context",
+        "zh": "包含 Shell 上下文"
+      },
+      "body": {
+        "en": "The request carries shell, cwd and named files.",
+        "zh": "请求携带 shell、cwd 与文件名。"
+      }
+    },
+    {
+      "title": {
+        "en": "Review structured output",
+        "zh": "检查结构化输出"
+      },
+      "body": {
+        "en": "JSON retains the command and explanation.",
+        "zh": "JSON 保留命令与解释。"
+      }
+    },
+    {
+      "title": {
+        "en": "Try the interface offline",
+        "zh": "离线体验接口"
+      },
+      "body": {
+        "en": "Mock mode exercises parsing without model setup.",
+        "zh": "mock 无需配置模型即可运行解析链路。"
+      }
+    }
+  ],
+  "demo": {
+    "title": {
+      "en": "Run it on a complete example",
+      "zh": "运行完整示例"
+    },
+    "note": {
+      "en": "Go 1.24+ and Python 3; two complete mock requests produce structured proposals without executing them.",
+      "zh": "需要 Go 1.24+ 与 Python 3；两个完整 mock 请求生成结构化建议，不执行建议命令。"
+    },
+    "source": "https://github.com/SuperMarioYL/sh1llwrt/blob/main/docs/demo-results.json",
+    "steps": [
+      {
+        "label": "Recorded run",
+        "body": "Deterministic mock command proposals through the real prompt/parser/JSON path; no model download, inference process or proposed shell command is executed.",
+        "command": "python3 examples/presentation_demo.py",
+        "output": "{\"command\":\"tar -xzf foo.tar.gz -C /tmp\",\"safe\":false,\"explain\":\"extract gzipped tarball into /tmp\"}\n{\"command\":\"kubectl get pods -n kube-system\",\"safe\":true,\"explain\":\"read-only pod listing\"}",
+        "image": "/assets/presentation/demo-0-light.svg",
+        "imageDark": "/assets/presentation/demo-0-dark.svg"
+      }
+    ]
+  },
+  "quickstart": {
+    "title": {
+      "en": "Try it locally",
+      "zh": "本地上手"
+    },
+    "body": {
+      "en": "Go 1.24+ and Python 3; two complete mock requests produce structured proposals without executing them.",
+      "zh": "需要 Go 1.24+ 与 Python 3；两个完整 mock 请求生成结构化建议，不执行建议命令。"
+    },
+    "steps": [
+      {
+        "title": {
+          "en": "Install from source",
+          "zh": "从源码安装"
+        },
+        "code": "git clone https://github.com/SuperMarioYL/sh1llwrt.git\ncd sh1llwrt\ngo build ./cmd/sh1llwrt"
+      },
+      {
+        "title": {
+          "en": "Run the included example",
+          "zh": "运行随仓示例"
+        },
+        "code": "python3 examples/presentation_demo.py"
+      }
+    ]
+  },
+  "limitations": [
+    {
+      "en": "The recorded proposals come from keyword-based mock responses. They do not measure model quality, warm-cache latency or hardware performance.",
+      "zh": "记录的建议来自关键词 mock 响应，不衡量模型质量、热缓存延迟或硬件性能。"
+    },
+    {
+      "en": "The safe flag is a supplied classification, not an independent safety check. The CLI prints suggestions and does not execute them; --insert is not implemented.",
+      "zh": "safe 字段是响应提供的分类，不是独立安全检查。CLI 只打印建议，不执行；--insert 尚未实现。"
+    },
+    {
+      "en": "Real inference needs a separately installed llama.cpp CLI and the GGUF. The built-in expected SHA256 is empty; checksum verification requires SH1LLWRT_MODEL_SHA256.",
+      "zh": "真实推理需要单独安装 llama.cpp CLI 和 GGUF。内置期望 SHA256 为空，须配置 SH1LLWRT_MODEL_SHA256 才会进行摘要核验。"
+    }
+  ],
+  "scene": {
+    "kind": "neon-graph",
+    "fallback": "/assets/presentation/scene-dark.svg",
+    "fallbackLight": "/assets/presentation/scene-light.svg"
+  },
+  "story": {
+    "intro": {
+      "title": {
+        "en": "A concrete task",
+        "zh": "从实际任务出发"
+      },
+      "body": {
+        "en": "A command suggestion is more useful when it knows the shell and names you are working with. Keep that context in the prompt and return a command you can review at the terminal.",
+        "zh": "命令建议了解当前 Shell 与文件名时更有用。把这些上下文放入 prompt，再返回可在终端检查的命令。"
+      }
+    },
+    "sections": [
+      {
+        "title": {
+          "en": "Follow the operation",
+          "zh": "处理过程"
+        },
+        "body": {
+          "en": "BuildPrompt constructs a shell-scoped request. The model cache prepares the GGUF for CLIRunner, which invokes an external llama-cli process; ParseReply extracts command, safe and explain fields. Print or JSON integrators display the result. --mock supplies deterministic responses through the same parser.",
+          "zh": "BuildPrompt 构建 Shell 请求；模型缓存为 CLIRunner 准备 GGUF，后者调用外部 llama-cli 进程。ParseReply 提取 command、safe、explain，Print 或 JSON 集成器展示结果；--mock 通过同一解析器处理确定性响应。"
+        },
+        "image": {
+          "light": "/assets/presentation/process-light.svg",
+          "dark": "/assets/presentation/process-dark.svg",
+          "alt": {
+            "en": "Follow the operation",
+            "zh": "处理过程"
+          }
+        }
+      },
+      {
+        "title": {
+          "en": "Inside sh1llwrt",
+          "zh": "sh1llwrt 的内部流程"
+        },
+        "body": {
+          "en": "BuildPrompt constructs a shell-scoped request. The model cache prepares the GGUF for CLIRunner, which invokes an external llama-cli process; ParseReply extracts command, safe and explain fields. Print or JSON integrators display the result. --mock supplies deterministic responses through the same parser.",
+          "zh": "BuildPrompt 构建 Shell 请求；模型缓存为 CLIRunner 准备 GGUF，后者调用外部 llama-cli 进程。ParseReply 提取 command、safe、explain，Print 或 JSON 集成器展示结果；--mock 通过同一解析器处理确定性响应。"
+        },
+        "image": {
+          "light": "/assets/presentation/architecture-light.svg",
+          "dark": "/assets/presentation/architecture-dark.svg",
+          "alt": {
+            "en": "Inside sh1llwrt",
+            "zh": "sh1llwrt 的内部流程"
+          }
+        }
+      },
+      {
+        "title": {
+          "en": "Connect the pieces",
+          "zh": "输入与输出"
+        },
+        "body": {
+          "en": "Choose the input and output route that matches your workflow. The local example below exercises the stated subset.",
+          "zh": "根据工作流选择输入与输出路径。本文本地示例验证其中明确说明的子流程。"
+        },
+        "image": {
+          "light": "/assets/presentation/integrations-light.svg",
+          "dark": "/assets/presentation/integrations-dark.svg",
+          "alt": {
+            "en": "Connect the pieces",
+            "zh": "输入与输出"
+          }
+        }
+      }
+    ],
+    "details": [
+      {
+        "title": {
+          "en": "Configuration",
+          "zh": "配置"
+        },
+        "body": {
+          "en": "SH1LLWRT_CACHE_DIR chooses the GGUF cache; SH1LLWRT_MODEL_URL and SH1LLWRT_MODEL_SHA256 select its source and expected digest; SH1LLWRT_LLAMA_CLI selects the executable. --threads, --max-tokens (96 by default) and --temperature control generation. --glob supplies named files rather than reading arbitrary file content. init writes shell integration; the quickstart demo does not modify shell configuration.",
+          "zh": "SH1LLWRT_CACHE_DIR 选择 GGUF 缓存；SH1LLWRT_MODEL_URL 与 SH1LLWRT_MODEL_SHA256 指定来源和期望摘要；SH1LLWRT_LLAMA_CLI 指定可执行文件。--threads、--max-tokens（默认 96）与 --temperature 控制生成。--glob 提供文件名，不任意读取文件内容。init 会写 Shell 集成；快速上手示例不修改 Shell 配置。"
+        }
+      },
+      {
+        "title": {
+          "en": "Further use",
+          "zh": "进一步使用"
+        },
+        "body": {
+          "en": "Run these commands from the repository root after installation. Replace paths for your own data.",
+          "zh": "安装后在仓库根目录运行以下命令；处理自己的数据时替换相应路径。"
+        },
+        "code": "go run ./cmd/sh1llwrt ask --mock --json \"list kube-system pods\"\n# With llama-cli and the model available:\ngo run ./cmd/sh1llwrt ask --shell bash --cwd \"$PWD\" --glob clip.mov \"convert clip.mov to mp4 h264\""
+      }
+    ]
+  }
+}

@@ -1,0 +1,82 @@
+{
+  "name": "sh1llwrt",
+  "tagline": "Read the proposed shell command before running it.",
+  "architecture": {
+    "title": "Inside sh1llwrt",
+    "nodes": [
+      {
+        "title": "Request context",
+        "detail": "internal/prompt/template.go"
+      },
+      {
+        "title": "GGUF cache",
+        "detail": "internal/model/cache.go"
+      },
+      {
+        "title": "CLI or mock runner",
+        "detail": "internal/llama/runner.go"
+      },
+      {
+        "title": "Reviewable output",
+        "detail": "internal/shell/integration.go"
+      }
+    ],
+    "edges": [
+      [
+        0,
+        1
+      ],
+      [
+        1,
+        2
+      ],
+      [
+        2,
+        3
+      ]
+    ]
+  },
+  "process": {
+    "title": "From input to a useful result",
+    "steps": [
+      {
+        "title": "Build context",
+        "detail": "Bash, /demo and intent"
+      },
+      {
+        "title": "Return canned reply",
+        "detail": "Deterministic mock backend"
+      },
+      {
+        "title": "Parse JSON output",
+        "detail": "Command, safe and explain"
+      }
+    ],
+    "result": "The fixture returns a tar extraction proposal marked false and a pod-listing proposal marked true; neither command runs."
+  },
+  "integrations": {
+    "title": "Supported input and output routes",
+    "items": [
+      {
+        "title": "Bash / Zsh context",
+        "detail": "Prompt grammar selection"
+      },
+      {
+        "title": "GGUF file",
+        "detail": "Local model cache"
+      },
+      {
+        "title": "llama-cli",
+        "detail": "External inference executable"
+      },
+      {
+        "title": "Text / JSON",
+        "detail": "Command proposals"
+      },
+      {
+        "title": "Mock backend",
+        "detail": "No-model examples"
+      }
+    ]
+  }
+}
