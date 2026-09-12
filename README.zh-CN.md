@@ -30,7 +30,7 @@ sh1llwrt 将请求与 Shell、工作目录、文件名上下文组合，向本�
   <img src="./assets/presentation/architecture-light.svg" width="960" alt="Architecture diagram">
 </picture>
 
-BuildPrompt 构建 Shell 请求；模型缓存为 CLIRunner 准备 GGUF，后者调用外部 llama-cli 进程。ParseReply 提取 command、safe、explain，Print 或 JSON 集成器展示结果；--mock 通过同一解析器处理确定性响应。
+BuildPrompt 构建 Shell 请求；模型缓存为 CLIRunner 准备 GGUF，后者调用外部 llama-cli 进程。ParseReply 提取 command、safe、explain，Print、JSON 与内联插入集成器展示结果；插入路径对破坏性命令先做 y/N 确认。--mock 通过同一解析器处理确定性响应。
 
 | 组件 | 职责 |
 | --- | --- |
@@ -87,9 +87,19 @@ go run ./cmd/sh1llwrt ask --mock --json "list kube-system pods"
 go run ./cmd/sh1llwrt ask --shell bash --cwd "$PWD" --glob clip.mov "convert clip.mov to mp4 h264"
 ```
 
+把 `?` 前缀与 Ctrl-Space 快捷键接入你的 Shell（之后重启终端）：
+
+```bash
+go run ./cmd/sh1llwrt init
+# zsh: ? extract foo.tar.gz to /tmp   -> 命令直接落在光标处
+#      Ctrl-Space 让模型重写当前行
+# bash: ? 打印命令供复制；Ctrl-Space 重写当前行
+# 破坏性命令会先询问 proceed? [y/N]；除 y 以外的回答（含 EOF）一律拒绝插入。
+```
+
 ## 配置
 
-SH1LLWRT_CACHE_DIR 选择 GGUF 缓存；SH1LLWRT_MODEL_URL 与 SH1LLWRT_MODEL_SHA256 指定来源和期望摘要；SH1LLWRT_LLAMA_CLI 指定可执行文件。--threads、--max-tokens（默认 96）与 --temperature 控制生成。--glob 提供文件名，不任意读取文件内容。init 会写 Shell 集成；快速上手示例不修改 Shell 配置。
+SH1LLWRT_CACHE_DIR 选择 GGUF 缓存；SH1LLWRT_MODEL_URL 与 SH1LLWRT_MODEL_SHA256 指定来源和期望摘要；SH1LLWRT_LLAMA_CLI 指定可执行文件。--threads、--max-tokens（默认 96）与 --temperature 控制生成。--glob 提供文件名，不任意读取文件内容。init 写入 Shell 集成块（`?` 前缀 + Ctrl-Space 快捷键，zsh 与 bash）；快速上手示例不修改 Shell 配置。
 
 ## 集成与职责分工
 
@@ -113,11 +123,11 @@ SH1LLWRT_CACHE_DIR 选择 GGUF 缓存；SH1LLWRT_MODEL_URL 与 SH1LLWRT_MODEL_SH
 ## 限制与后续方向
 
 - 记录的建议来自关键词 mock 响应，不衡量模型质量、热缓存延迟或硬件性能。
-- safe 字段是响应提供的分类，不是独立安全检查。CLI 只打印建议，不执行；--insert 尚未实现。
+- safe 字段是响应提供的分类，不是独立安全检查。CLI 只打印或插入建议，绝不执行；--insert 在破坏性命令到达光标前先问 y/N。
 - 真实推理需要单独安装 llama.cpp CLI 和 GGUF。内置期望 SHA256 为空，须配置 SH1LLWRT_MODEL_SHA256 才会进行摘要核验。
 
-光标位置内联插入、打包推理运行时与有代表性的命令质量基准仍是后续方向。
+打包推理运行时与有代表性的命令质量基准仍是后续方向。光标插入已于 v0.2.0 发布（zsh `?` 经 print -z 插入；Ctrl-Space 在 zsh 与 bash 中重写当前行）。
 
 ## 许可与贡献
 
-许可见 [LICENSE](./LICENSE). 反馈问题时请提供最小输入、执行命令和实际输出。
+许可见 [LICENSE](./LICENSE)，发布历史见 [CHANGELOG.md](./CHANGELOG.md)。 反馈问题时请提供最小输入、执行命令和实际输出。

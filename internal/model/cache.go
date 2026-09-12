@@ -27,11 +27,10 @@ const ModelFilename = "qwen2.5-coder-1.5b-instruct-q4_k_m.gguf"
 // DefaultModelURL is the canonical download. Override with SH1LLWRT_MODEL_URL.
 const DefaultModelURL = "https://huggingface.co/Qwen/Qwen2.5-Coder-1.5B-Instruct-GGUF/resolve/main/qwen2.5-coder-1.5b-instruct-q4_k_m.gguf"
 
-// DefaultModelSHA256 is the expected sha256 of the canonical GGUF. Before
-// tagging v0.1.0 this MUST be set to the measured digest of the file at
-// DefaultModelURL; until then it is empty and Ensure skips verification with a
-// warning, so the binary is runnable end-to-end. Override with
-// SH1LLWRT_MODEL_SHA256.
+// DefaultModelSHA256 is the expected sha256 of the canonical GGUF. It is not
+// pinned yet: until it is, Ensure skips verification with a warning so the
+// binary is runnable end-to-end. Enforce verification by setting
+// SH1LLWRT_MODEL_SHA256 (or pinning the measured digest here).
 const DefaultModelSHA256 = ""
 
 // Cache is the on-disk model cache.

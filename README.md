@@ -30,7 +30,7 @@ A command suggestion is more useful when it knows the shell and names you are wo
   <img src="./assets/presentation/architecture-light.svg" width="960" alt="Architecture diagram">
 </picture>
 
-BuildPrompt constructs a shell-scoped request. The model cache prepares the GGUF for CLIRunner, which invokes an external llama-cli process; ParseReply extracts command, safe and explain fields. Print or JSON integrators display the result. --mock supplies deterministic responses through the same parser.
+BuildPrompt constructs a shell-scoped request. The model cache prepares the GGUF for CLIRunner, which invokes an external llama-cli process; ParseReply extracts command, safe and explain fields. Print, JSON and inline-insert integrators display the result; the insert path gates destructive replies on a y/N confirmation. --mock supplies deterministic responses through the same parser.
 
 | Component | Responsibility |
 | --- | --- |
@@ -87,9 +87,20 @@ go run ./cmd/sh1llwrt ask --mock --json "list kube-system pods"
 go run ./cmd/sh1llwrt ask --shell bash --cwd "$PWD" --glob clip.mov "convert clip.mov to mp4 h264"
 ```
 
+Wire the `?`-prefix and the Ctrl-Space widget into your shell (restart it afterwards):
+
+```bash
+go run ./cmd/sh1llwrt init
+# zsh: ? extract foo.tar.gz to /tmp   -> the command lands at your cursor
+#      Ctrl-Space rewrites the current line through the model
+# bash: ? prints the command for copy; Ctrl-Space rewrites the line
+# A destructive reply asks proceed? [y/N] before anything is inserted;
+# anything other than y (including EOF) declines — nothing is inserted.
+```
+
 ## Configuration
 
-SH1LLWRT_CACHE_DIR chooses the GGUF cache; SH1LLWRT_MODEL_URL and SH1LLWRT_MODEL_SHA256 select its source and expected digest; SH1LLWRT_LLAMA_CLI selects the executable. --threads, --max-tokens (96 by default) and --temperature control generation. --glob supplies named files rather than reading arbitrary file content. init writes shell integration; the quickstart demo does not modify shell configuration.
+SH1LLWRT_CACHE_DIR chooses the GGUF cache; SH1LLWRT_MODEL_URL and SH1LLWRT_MODEL_SHA256 select its source and expected digest; SH1LLWRT_LLAMA_CLI selects the executable. --threads, --max-tokens (96 by default) and --temperature control generation. --glob supplies named files rather than reading arbitrary file content. init writes the shell integration block (`?`-prefix plus Ctrl-Space widget, zsh and bash); the quickstart demo does not modify shell configuration.
 
 ## Integrations and responsibilities
 
@@ -113,11 +124,11 @@ Choose the input and output route that matches your workflow. The local example 
 ## Limits and next steps
 
 - The recorded proposals come from keyword-based mock responses. They do not measure model quality, warm-cache latency or hardware performance.
-- The safe flag is a supplied classification, not an independent safety check. The CLI prints suggestions and does not execute them; --insert is not implemented.
+- The safe flag is a supplied classification, not an independent safety check. The CLI prints or inserts suggestions and never executes them; --insert asks y/N before a destructive command reaches the cursor.
 - Real inference needs a separately installed llama.cpp CLI and the GGUF. The built-in expected SHA256 is empty; checksum verification requires SH1LLWRT_MODEL_SHA256.
 
-Inline cursor insertion, packaged inference runtime and a representative command-quality benchmark remain future work.
+Packaged inference runtime and a representative command-quality benchmark remain future work. Cursor insertion shipped in v0.2.0 (zsh `?` inserts via `print -z`; Ctrl-Space rewrites the line in zsh and bash).
 
 ## License and contributions
 
-See [LICENSE](./LICENSE). When reporting an issue, include a minimal input, the command, and the observed output.
+See [LICENSE](./LICENSE) and [CHANGELOG.md](./CHANGELOG.md) for release history. When reporting an issue, include a minimal input, the command, and the observed output.

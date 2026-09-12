@@ -10,7 +10,8 @@
   },
   "meta": {
     "visual_style": "neon-particle",
-    "demo_source": "docs/demo-results.json"
+    "demo_source": "docs/demo-results.json",
+    "content_version": "0.2.0"
   },
   "hero": {
     "headline": {
@@ -108,8 +109,8 @@
       "zh": "记录的建议来自关键词 mock 响应，不衡量模型质量、热缓存延迟或硬件性能。"
     },
     {
-      "en": "The safe flag is a supplied classification, not an independent safety check. The CLI prints suggestions and does not execute them; --insert is not implemented.",
-      "zh": "safe 字段是响应提供的分类，不是独立安全检查。CLI 只打印建议，不执行；--insert 尚未实现。"
+      "en": "The safe flag is a supplied classification, not an independent safety check. The CLI prints or inserts suggestions and never executes them; --insert asks y/N before a destructive command reaches the cursor.",
+      "zh": "safe 字段是响应提供的分类，不是独立安全检查。CLI 只打印或插入建议，绝不执行；--insert 在破坏性命令到达光标前先问 y/N。"
     },
     {
       "en": "Real inference needs a separately installed llama.cpp CLI and the GGUF. The built-in expected SHA256 is empty; checksum verification requires SH1LLWRT_MODEL_SHA256.",
@@ -139,8 +140,8 @@
           "zh": "处理过程"
         },
         "body": {
-          "en": "BuildPrompt constructs a shell-scoped request. The model cache prepares the GGUF for CLIRunner, which invokes an external llama-cli process; ParseReply extracts command, safe and explain fields. Print or JSON integrators display the result. --mock supplies deterministic responses through the same parser.",
-          "zh": "BuildPrompt 构建 Shell 请求；模型缓存为 CLIRunner 准备 GGUF，后者调用外部 llama-cli 进程。ParseReply 提取 command、safe、explain，Print 或 JSON 集成器展示结果；--mock 通过同一解析器处理确定性响应。"
+          "en": "BuildPrompt constructs a shell-scoped request. The model cache prepares the GGUF for CLIRunner, which invokes an external llama-cli process; ParseReply extracts command, safe and explain fields. Print, JSON and inline-insert integrators display the result; the insert path gates destructive replies on a y/N confirmation. --mock supplies deterministic responses through the same parser.",
+          "zh": "BuildPrompt 构建 Shell 请求；模型缓存为 CLIRunner 准备 GGUF，后者调用外部 llama-cli 进程。ParseReply 提取 command、safe、explain，Print、JSON 与内联插入集成器展示结果；插入路径对破坏性命令先做 y/N 确认。--mock 通过同一解析器处理确定性响应。"
         },
         "image": {
           "light": "/assets/presentation/process-light.svg",
@@ -161,8 +162,8 @@
           "zh": "sh1llwrt 的内部流程"
         },
         "body": {
-          "en": "BuildPrompt constructs a shell-scoped request. The model cache prepares the GGUF for CLIRunner, which invokes an external llama-cli process; ParseReply extracts command, safe and explain fields. Print or JSON integrators display the result. --mock supplies deterministic responses through the same parser.",
-          "zh": "BuildPrompt 构建 Shell 请求；模型缓存为 CLIRunner 准备 GGUF，后者调用外部 llama-cli 进程。ParseReply 提取 command、safe、explain，Print 或 JSON 集成器展示结果；--mock 通过同一解析器处理确定性响应。"
+          "en": "BuildPrompt constructs a shell-scoped request. The model cache prepares the GGUF for CLIRunner, which invokes an external llama-cli process; ParseReply extracts command, safe and explain fields. Print, JSON and inline-insert integrators display the result; the insert path gates destructive replies on a y/N confirmation. --mock supplies deterministic responses through the same parser.",
+          "zh": "BuildPrompt 构建 Shell 请求；模型缓存为 CLIRunner 准备 GGUF，后者调用外部 llama-cli 进程。ParseReply 提取 command、safe、explain，Print、JSON 与内联插入集成器展示结果；插入路径对破坏性命令先做 y/N 确认。--mock 通过同一解析器处理确定性响应。"
         },
         "image": {
           "light": "/assets/presentation/architecture-light.svg",

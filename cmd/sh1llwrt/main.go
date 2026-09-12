@@ -14,7 +14,7 @@ import (
 // (-ldflags "-X main.version=<v>"). Dev builds keep the -dev suffix; the
 // canonical version source is the repo-root VERSION file, read by goreleaser
 // and the publish tooling (not the binary, which has no repo at runtime).
-var version = "0.1.0-dev"
+var version = "0.2.0-dev"
 
 var rootCmd = &cobra.Command{
 	Use:     "sh1llwrt",

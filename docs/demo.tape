@@ -46,10 +46,17 @@ Type "./sh1llwrt init --dry-run"
 Enter
 Sleep 700ms
 
-Type "# m2 (not yet): inline insert + Ctrl-Space fails closed in m1"
+Type "# m2: --insert prints the command only (the shell function puts it at your cursor)"
 Enter
 Sleep 200ms
-Type "./sh1llwrt ask --mock --insert 'rm -rf /tmp/old'"
+Type "echo y | ./sh1llwrt ask --mock --insert 'extract foo.tar.gz to /tmp'"
+Enter
+Sleep 700ms
+
+Type "# destructive reply without y: declined, nothing inserted — fail closed"
+Enter
+Sleep 200ms
+Type "./sh1llwrt ask --mock --insert 'mirror src/ to dest/ over ssh' </dev/null"
 Enter
 Sleep 700ms
 
