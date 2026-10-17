@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/SuperMarioYL/sh1llwrt/internal/shell"
 	"github.com/spf13/cobra"
@@ -22,6 +23,16 @@ var initCmd = &cobra.Command{
 		shellName, err := shell.ResolveShell(initFlags.shell)
 		if err != nil {
 			return err
+		}
+		// Detect falls back to bash for unsupported shells; say so, or the
+		// block lands in an rc file the user's shell never reads while the
+		// success output claims an install.
+		if initFlags.shell == "" {
+			if v := os.Getenv("SHELL"); v != "" {
+				if base := filepath.Base(v); base != "zsh" && base != "bash" {
+					fmt.Fprintf(os.Stderr, "sh1llwrt: note: $SHELL is %s; only zsh and bash are supported — wiring the bash block (~/.bashrc) instead\n", base)
+				}
+			}
 		}
 		if initFlags.dryRun {
 			// Preview the exact block Install would write (no markers, no rc

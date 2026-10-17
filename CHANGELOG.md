@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.3.0] — 2026-10-18
+
+### Fixed
+
+- **Tagless model replies are no longer mangled.** The no-tag fallback let the prompt's own `Answer:` label leak into the parsed command (`Answer: tar -xzf …`), and a prose line like "Sure! Here is what you want:" beat the real command on the next line — the fallback also handed back whole prose blobs as "commands". The fallback now strips the `Answer:` label, rejects sentence-punctuation first tokens, and returns a clean `parse reply` error instead of inserting prose.
+- **The destructive gate catches what the prompt already teaches.** `mv`, `truncate`, and `git push`/`git reset`/`git clean` were missing from the local safety heuristic even though the prompt's own instructions declare them unsafe — so a model that mis-tagged `git reset --hard` as safe reached the cursor with no `proceed? [y/N]` prompt on `--insert`. The local heuristic now mirrors that unsafe-verb list.
+- **`ask --insert --json` fails fast** with `--insert and --json are mutually exclusive` instead of silently running insert mode — whose destructive replies read stdin, hanging a script that expected one JSON line.
+- **`init` warns when your shell isn't supported.** With `$SHELL` set to fish or anything else, the block still lands in `~/.bashrc`, but init now says so on stderr instead of claiming an install your shell will never read.
+
+### Docs
+
+- Both READMEs document the zero-toolchain install path first (latest release tarball via the one-line `curl … | sh` installer), and `scripts/install.sh` messages state the real release matrix (darwin/amd64 + darwin/arm64 + linux/amd64) instead of stale text.
+
 ## [0.2.0] — 2026-09-12
 
 ### Fixed

@@ -26,8 +26,8 @@ func readVersionFile(t *testing.T) string {
 
 func TestVersionLockstep(t *testing.T) {
 	ver := readVersionFile(t)
-	if ver != "0.2.0" {
-		t.Fatalf("VERSION file = %q, want 0.2.0", ver)
+	if ver != "0.3.0" {
+		t.Fatalf("VERSION file = %q, want 0.3.0", ver)
 	}
 	if want := ver + "-dev"; version != want {
 		t.Fatalf("main.version dev constant = %q, want %q (the Go-side surfaces must stay in lockstep with the VERSION file)", version, want)
@@ -54,7 +54,7 @@ func TestChangelogHasBothVersions(t *testing.T) {
 		t.Fatalf("read CHANGELOG.md: %v", err)
 	}
 	s := string(b)
-	for _, want := range []string{"## [0.1.0]", "## [0.2.0]"} {
+	for _, want := range []string{"## [0.1.0]", "## [0.2.0]", "## [0.3.0]"} {
 		if !strings.Contains(s, want) {
 			t.Fatalf("CHANGELOG.md must contain a %q section", want)
 		}

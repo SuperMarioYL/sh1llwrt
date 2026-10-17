@@ -83,6 +83,14 @@ func init() {
 }
 
 func runAsk(cmd *cobra.Command, args []string) error {
+	// One output mode at a time: --insert prints the command only (and gates
+	// destructive replies on a stdin read), --json emits one JSON object for
+	// scripts. Silently preferring one would degrade the documented
+	// scripting surface — and hide a stdin read inside a JSON pipeline.
+	if askFlags.insert && askFlags.json {
+		return fmt.Errorf("--insert and --json are mutually exclusive")
+	}
+
 	intent := strings.Join(args, " ")
 	shellName := askFlags.shellName
 	if shellName == "" {

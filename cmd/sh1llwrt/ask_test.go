@@ -33,9 +33,11 @@ func (c *recordingCache) Ensure(ctx context.Context, _ func(string, ...any)) (st
 type fakeRunner struct {
 	deadline time.Time
 	reply    string
+	called   bool
 }
 
 func (f *fakeRunner) Complete(ctx context.Context, _ string) (string, error) {
+	f.called = true
 	f.deadline, _ = ctx.Deadline()
 	return f.reply, nil
 }
@@ -102,6 +104,30 @@ func withStdin(t *testing.T, content string) {
 	old := os.Stdin
 	os.Stdin = r
 	t.Cleanup(func() { os.Stdin = old })
+}
+
+// captureStderr swaps os.Stderr for a pipe and returns a flush function that
+// restores it and returns everything written since.
+func captureStderr(t *testing.T) func() string {
+	t.Helper()
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	old := os.Stderr
+	os.Stderr = w
+	t.Cleanup(func() {
+		if os.Stderr == w {
+			os.Stderr = old
+			w.Close()
+		}
+	})
+	return func() string {
+		os.Stderr = old
+		w.Close()
+		b, _ := io.ReadAll(r)
+		return string(b)
+	}
 }
 
 // --- m5: the download and inference budgets are separate --------------------
@@ -253,6 +279,66 @@ func TestAskInsertDeclinesClosedEndToEnd(t *testing.T) {
 	}
 	if out := flush(); out != "" {
 		t.Fatalf("a declined insert must print no command, got %q", out)
+	}
+}
+
+// --- m11: --insert and --json are mutually exclusive --------------------------
+
+func TestAskInsertJSONMutuallyExclusive(t *testing.T) {
+	runner := &fakeRunner{reply: "<cmd>ls -la</cmd><safe>true</safe><explain>list</explain>"}
+	swapRunner(t, runner)
+	resetAskFlags()
+	askFlags.mock = true
+	askFlags.insert = true
+	askFlags.json = true
+
+	err := runAsk(newTestCmd(), []string{"list files"})
+	if err == nil || !strings.Contains(err.Error(), "mutually exclusive") {
+		t.Fatalf("expected the mutual-exclusion error, got %v", err)
+	}
+	if runner.called {
+		t.Fatal("the conflict must fail before any inference work")
+	}
+}
+
+// --- m12: init warns when $SHELL is not zsh/bash ------------------------------
+
+func TestInitWarnsOnUnsupportedShell(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	t.Setenv("ZDOTDIR", "")
+	initFlags.dryRun = true
+	t.Cleanup(func() { initFlags.dryRun = false })
+
+	// Unsupported shell: the notice must fire on stderr (v0.2.0 was silent).
+	t.Setenv("SHELL", "/usr/bin/fish")
+	flushOut := captureStdout(t)
+	flushErr := captureStderr(t)
+	if err := initCmd.RunE(initCmd, nil); err != nil {
+		t.Fatalf("init --dry-run: %v", err)
+	}
+	_ = flushOut()
+	if got := flushErr(); !strings.Contains(got, "only zsh and bash are supported") || !strings.Contains(got, "fish") {
+		t.Fatalf("expected the unsupported-shell notice on stderr, got %q", got)
+	}
+
+	// Supported shell: no notice.
+	t.Setenv("SHELL", "/bin/zsh")
+	flushErr = captureStderr(t)
+	if err := initCmd.RunE(initCmd, nil); err != nil {
+		t.Fatalf("init --dry-run: %v", err)
+	}
+	if got := flushErr(); got != "" {
+		t.Fatalf("no notice expected for zsh, got %q", got)
+	}
+
+	// Unset SHELL: the documented headless fallback stays silent.
+	t.Setenv("SHELL", "")
+	flushErr = captureStderr(t)
+	if err := initCmd.RunE(initCmd, nil); err != nil {
+		t.Fatalf("init --dry-run: %v", err)
+	}
+	if got := flushErr(); got != "" {
+		t.Fatalf("no notice expected when SHELL is unset, got %q", got)
 	}
 }
 

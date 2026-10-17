@@ -41,7 +41,19 @@ BuildPrompt constructs a shell-scoped request. The model cache prepares the GGUF
 
 ## Install and quickstart
 
-Use the runtime version declared in the repository manifest. The source installation below makes the included example reproducible.
+Install the latest release binary — no toolchain needed (macOS Apple silicon + Intel, Linux x64):
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/SuperMarioYL/sh1llwrt/main/scripts/install.sh | sh
+```
+
+The installer downloads the release tarball for your platform from GitHub Releases into `~/.local/bin`, falling back to `go install` from source when no release matches. Then wire the shell:
+
+```bash
+sh1llwrt init
+```
+
+Build from source instead (needs Go 1.24+ and Python 3 for the demo):
 
 ```bash
 git clone https://github.com/SuperMarioYL/sh1llwrt.git
@@ -49,7 +61,7 @@ cd sh1llwrt
 go build ./cmd/sh1llwrt
 ```
 
-Go 1.24+ and Python 3; two complete mock requests produce structured proposals without executing them.
+Two complete mock requests produce structured proposals without executing them.
 
 ```bash
 python3 examples/presentation_demo.py

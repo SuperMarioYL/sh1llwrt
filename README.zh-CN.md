@@ -41,7 +41,19 @@ BuildPrompt 构建 Shell 请求；模型缓存为 CLIRunner 准备 GGUF，后者
 
 ## 安装与快速上手
 
-使用仓库清单声明的运行时版本。以下源码安装步骤可复现随仓示例。
+安装最新发布二进制——无需工具链（macOS Apple 芯片 + Intel、Linux x64）：
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/SuperMarioYL/sh1llwrt/main/scripts/install.sh | sh
+```
+
+安装脚本从 GitHub Releases 下载对应平台的发布包到 `~/.local/bin`；若没有匹配的发布包，则回退为从源码 `go install`。然后接入 Shell：
+
+```bash
+sh1llwrt init
+```
+
+也可以从源码构建（需要 Go 1.24+，演示需要 Python 3）：
 
 ```bash
 git clone https://github.com/SuperMarioYL/sh1llwrt.git
@@ -49,7 +61,7 @@ cd sh1llwrt
 go build ./cmd/sh1llwrt
 ```
 
-需要 Go 1.24+ 与 Python 3；两个完整 mock 请求生成结构化建议，不执行建议命令。
+两个完整 mock 请求生成结构化建议，不执行建议命令。
 
 ```bash
 python3 examples/presentation_demo.py

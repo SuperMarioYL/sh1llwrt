@@ -36,8 +36,8 @@ type AskReply struct {
 }
 
 var (
-	cmdRe    = regexp.MustCompile(`(?s)<cmd>(.*?)</cmd>`)
-	safeRe   = regexp.MustCompile(`(?si)<safe>(.*?)</safe>`)
+	cmdRe     = regexp.MustCompile(`(?s)<cmd>(.*?)</cmd>`)
+	safeRe    = regexp.MustCompile(`(?si)<safe>(.*?)</safe>`)
 	explainRe = regexp.MustCompile(`(?s)<explain>(.*?)</explain>`)
 )
 
@@ -89,6 +89,9 @@ func ParseReply(raw string) (AskReply, error) {
 	if strings.TrimSpace(raw) == "" {
 		return AskReply{}, fmt.Errorf("empty model reply")
 	}
+	// The prompt ends with a bare "Answer:" label; small models echo the
+	// label at the start of the reply and it must not leak into the command.
+	raw = stripAnswerLabel(raw)
 
 	var reply AskReply
 
@@ -138,19 +141,30 @@ func IsDestructive(cmd string) bool {
 	}
 	// Token-level destructive verbs. We split on shell metacharacters so
 	// "sudo rm" and "rm" both match, and "rm" inside a filename does not.
+	// The list mirrors the unsafe verbs the system instruction itself
+	// teaches the model: a heuristic that skips verbs the prompt calls
+	// unsafe cannot catch the model under-reporting them.
 	tokens := tokenize(s)
-	for _, t := range tokens {
+	for i, t := range tokens {
 		switch t {
 		case "rm", "rmdir", "dd", "mkfs", "mkfs.ext2", "mkfs.ext3", "mkfs.ext4",
 			"mkfs.vfat", "mkfs.ntfs", "shred", "fdisk", "parted", "pvremove",
 			"vgremove", "lvremove", "chmod", "chown", "chgrp", "shutdown", "reboot",
-			"halt", "poweroff", "kill", "killall", "pkill", "systemctl", "service":
+			"halt", "poweroff", "kill", "killall", "pkill", "systemctl", "service",
+			"mv", "truncate":
 			// chmod/chown are only destructive with -R or on system files; we
-			// gate hard on the verb and let Safe-confirm do the rest.
+			// gate hard on the verb and let Safe-confirm do the rest. mv and
+			// truncate overwrite silently, exactly like the redirect case.
 			return true
 		}
 		// sudo / doas / runuser → anything escalated is unsafe by default.
 		if t == "sudo" || t == "doas" || t == "runuser" || t == "su" {
+			return true
+		}
+		// git push/reset/clean destroy remote state, uncommitted work, or
+		// untracked files — the system instruction already declares them
+		// unsafe, so the local gate must agree.
+		if (t == "push" || t == "reset" || t == "clean") && i > 0 && tokens[i-1] == "git" {
 			return true
 		}
 	}
@@ -247,7 +261,11 @@ func firstCommandLine(raw string) string {
 		if l == "" {
 			continue
 		}
-		if strings.HasPrefix(l, "<") || strings.HasPrefix(l, "#") || strings.HasPrefix(l, "Answer") {
+		// Strip the prompt's "Answer:" label from the line instead of
+		// skipping it: the label carries no information, the rest of the
+		// line may be the command.
+		l = stripAnswerLabel(l)
+		if strings.HasPrefix(l, "<") || strings.HasPrefix(l, "#") {
 			continue
 		}
 		// Strip a leading prompt char if present.
@@ -256,20 +274,58 @@ func firstCommandLine(raw string) string {
 			return l
 		}
 	}
-	// Last resort: whole blob, trimmed.
-	return strings.TrimSpace(stripFences(raw))
+	// Last resort: the whole blob — but only a single line that reads as one
+	// command word. Prose or a multi-line blob is not a command; returning ""
+	// surfaces the honest "no command found" error instead of inserting junk.
+	blob := strings.TrimSpace(stripFences(raw))
+	if !strings.Contains(blob, "\n") && firstTokenIsCommandWord(blob) {
+		return blob
+	}
+	return ""
 }
 
-func isCommandLike(s string) bool {
+// stripAnswerLabel removes one leading, case-insensitive "Answer:" prompt
+// label plus surrounding whitespace. requestBlock ends the prompt with a bare
+// "Answer:" and small models routinely echo the label at the start of the
+// reply; leaving it in would leak it into the parsed command.
+func stripAnswerLabel(s string) string {
+	s = strings.TrimSpace(s)
+	if len(s) >= len("Answer:") && strings.EqualFold(s[:len("Answer:")], "Answer:") {
+		s = strings.TrimSpace(s[len("Answer:"):])
+	}
+	return s
+}
+
+// firstTokenIsCommandWord reports whether the first whitespace-delimited
+// token of s is a plausible command word: it starts with a letter (or a path
+// char) and carries no sentence punctuation — "Sure!" and "Answer:" are
+// prose, "tar", "git", "/usr/bin/tool" are not.
+func firstTokenIsCommandWord(s string) bool {
+	s = strings.TrimSpace(s)
 	if s == "" {
 		return false
 	}
-	// Must start with an ASCII letter (the verb) and contain a space or path
-	// separator — filters out "yes", "tar" alone, or stray prose.
-	r := s[0]
-	if !((r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z')) {
+	token := s
+	if i := strings.IndexAny(s, " \t"); i >= 0 {
+		token = s[:i]
+	}
+	token = strings.TrimLeft(token, "$> ")
+	if token == "" {
 		return false
 	}
+	r := token[0]
+	if !((r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || r == '/' || r == '.' || r == '_') {
+		return false
+	}
+	return !strings.ContainsAny(token, "!?,;:'\"()<>|&*`\\")
+}
+
+func isCommandLike(s string) bool {
+	if !firstTokenIsCommandWord(s) {
+		return false
+	}
+	// The scan path wants a full command line (the one-word case is handled
+	// by the gated last resort), so require a space or path separator.
 	return strings.ContainsAny(s, " \t/") || strings.HasSuffix(s, ".sh")
 }
 

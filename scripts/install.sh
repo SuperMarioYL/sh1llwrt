@@ -1,6 +1,6 @@
 #!/usr/bin/env sh
-# sh1llwrt installer: drops the binary into ~/.local/bin (or $GOPATH/bin via go install fallback).
-# v0.1 is OSS-only, free, no account, no telemetry. This script is the curl|sh entry point.
+# sh1llwrt installer: drops the latest release binary into ~/.local/bin (or $GOPATH/bin via go install fallback).
+# OSS-only, free, no account, no telemetry. This script is the curl|sh entry point.
 set -eu
 
 OWNER="SuperMarioYL"
@@ -11,13 +11,13 @@ GOPATH_BIN="${GOPATH:-${HOME}/go}/bin"
 err() { printf "sh1llwrt: %s\n" "$*" >&2; }
 note() { printf "sh1llwrt: %s\n" "$*"; }
 
-# --- detect OS / arch (m1 ships darwin/arm64 + linux/amd64) ----------------
+# --- detect OS / arch (releases ship darwin/amd64 + darwin/arm64 + linux/amd64) ---
 OS="$(uname -s)"
 ARCH="$(uname -m)"
 case "$OS" in
   Darwin) os="darwin" ;;
   Linux)  os="linux"  ;;
-  *) err "unsupported OS: $OS (v0.1 ships darwin/arm64 + linux/amd64)"; exit 1 ;;
+  *) err "unsupported OS: $OS (releases ship darwin/amd64 + darwin/arm64 + linux/amd64)"; exit 1 ;;
 esac
 case "$ARCH" in
   arm64|aarch64) arch="arm64" ;;
