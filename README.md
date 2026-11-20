@@ -30,7 +30,7 @@ A command suggestion is more useful when it knows the shell and names you are wo
   <img src="./assets/presentation/architecture-light.svg" width="960" alt="Architecture diagram">
 </picture>
 
-BuildPrompt constructs a shell-scoped request. The model cache prepares the GGUF for CLIRunner, which invokes an external llama-cli process; ParseReply extracts command, safe and explain fields. Print, JSON and inline-insert integrators display the result; the insert path gates destructive replies on a y/N confirmation. --mock supplies deterministic responses through the same parser.
+BuildPrompt constructs a shell-scoped request. The model cache prepares the GGUF for CLIRunner, which invokes an external llama-cli process; ParseReply extracts command, safe and explain fields, and recovers the command when a reply is cut off before its closing tag. Print, JSON and inline-insert integrators display the result; the insert path gates destructive replies on a y/N confirmation. --mock supplies deterministic responses through the same parser.
 
 | Component | Responsibility |
 | --- | --- |
@@ -136,7 +136,7 @@ Choose the input and output route that matches your workflow. The local example 
 ## Limits and next steps
 
 - The recorded proposals come from keyword-based mock responses. They do not measure model quality, warm-cache latency or hardware performance.
-- The safe flag is a supplied classification, not an independent safety check. The CLI prints or inserts suggestions and never executes them; --insert asks y/N before a destructive command reaches the cursor.
+- The safe flag starts as the model's own classification; a local verb-and-redirect heuristic can only make it stricter, never safer, and it remains a heuristic rather than a guarantee. The CLI prints or inserts suggestions and never executes them; --insert asks y/N before a destructive command reaches the cursor.
 - Real inference needs a separately installed llama.cpp CLI and the GGUF. The built-in expected SHA256 is empty; checksum verification requires SH1LLWRT_MODEL_SHA256.
 
 Packaged inference runtime and a representative command-quality benchmark remain future work. Cursor insertion shipped in v0.2.0 (zsh `?` inserts via `print -z`; Ctrl-Space rewrites the line in zsh and bash).

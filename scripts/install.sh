@@ -27,15 +27,34 @@ esac
 
 mkdir -p "$INSTALL_DIR"
 
+# --- pick one downloader for both requests --------------------------------
+# The API probe and the tarball fetch must use the same tool: probing with wget
+# and then downloading with curl left wget-only hosts failing at "curl: command
+# not found" after the URL had already been resolved.
+if command -v curl >/dev/null 2>&1; then
+  DOWNLOADER=curl
+elif command -v wget >/dev/null 2>&1; then
+  DOWNLOADER=wget
+else
+  DOWNLOADER=""
+fi
+
+# fetch <url> <outfile|-> — writes the body to outfile, or to stdout for "-".
+fetch() {
+  case "$DOWNLOADER" in
+    curl)
+      if [ "$2" = "-" ]; then curl -fsSL "$1"; else curl -fsSL "$1" -o "$2"; fi ;;
+    wget)
+      if [ "$2" = "-" ]; then wget -qO- "$1"; else wget -q -O "$2" "$1"; fi ;;
+  esac
+}
+
 # --- try the latest GitHub release binary --------------------------------
 # Release asset naming from .goreleaser.yaml: sh1llwrt_<version>_<os>_<arch>.tar.gz
 api_url="https://api.github.com/repos/${OWNER}/${REPO}/releases/latest"
-if command -v curl >/dev/null 2>&1; then
-  dl_url="$(curl -fsSL "$api_url" 2>/dev/null | grep -oE "browser_download_url.*${os}_${arch}\.tar\.gz" | head -1 | sed 's/.*browser_download_url": *"//; s/"$//')" || dl_url=""
-elif command -v wget >/dev/null 2>&1; then
-  dl_url="$(wget -qO- "$api_url" 2>/dev/null | grep -oE "browser_download_url.*${os}_${arch}\.tar\.gz" | head -1 | sed 's/.*browser_download_url": *"//; s/"$//')" || dl_url=""
-else
-  dl_url=""
+dl_url=""
+if [ -n "$DOWNLOADER" ]; then
+  dl_url="$(fetch "$api_url" - 2>/dev/null | grep -oE "browser_download_url.*${os}_${arch}\.tar\.gz" | head -1 | sed 's/.*browser_download_url": *"//; s/"$//')" || dl_url=""
 fi
 
 if [ -n "$dl_url" ] && [ "$dl_url" != "null" ]; then
@@ -43,7 +62,7 @@ if [ -n "$dl_url" ] && [ "$dl_url" != "null" ]; then
   tmpdir="$(mktemp -d)"
   trap 'rm -rf "$tmpdir"' EXIT
   ( cd "$tmpdir" \
-    && curl -fsSL "$dl_url" -o sh1llwrt.tar.gz \
+    && fetch "$dl_url" sh1llwrt.tar.gz \
     && tar -xzf sh1llwrt.tar.gz \
     && mv sh1llwrt "${INSTALL_DIR}/sh1llwrt" )
   chmod +x "${INSTALL_DIR}/sh1llwrt"

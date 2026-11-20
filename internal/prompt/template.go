@@ -105,10 +105,16 @@ func ParseReply(raw string) (AskReply, error) {
 		reply.Explain = strings.TrimSpace(m[1])
 	}
 
-	// Fallback: no <cmd> tag → take the first non-empty, non-tag line that
-	// looks like a command (starts with a word char and contains a space or
+	// Fallback 1: an opened <cmd> whose closing tag never arrived. The 96-token
+	// generation cap cuts replies mid-line, and the command before the cut is
+	// still the answer — dropping it made the ?-alias silently insert nothing.
+	// Fallback 2: no <cmd> tag at all → take the first non-empty, non-tag line
+	// that looks like a command (starts with a word char and contains a space or
 	// path separator). This recovers the many cases where a small model just
 	// emits the bare command.
+	if reply.Command == "" {
+		reply.Command = unclosedCmdTag(raw)
+	}
 	if reply.Command == "" {
 		reply.Command = firstCommandLine(raw)
 	}
@@ -135,36 +141,42 @@ func IsDestructive(cmd string) bool {
 	if s == "" {
 		return false
 	}
-	// Shell redirects that truncate/overwrite.
-	if strings.Contains(s, ">") && !strings.Contains(s, ">>") {
+	// Shell redirects that truncate/overwrite. Structural, not a substring
+	// test: ">>" (append), ">&" (descriptor dup), quoted text, and /dev/null
+	// targets do not truncate, and one ">>" must not excuse a real "> file".
+	if hasTruncatingRedirect(s) {
 		return true
 	}
 	// Token-level destructive verbs. We split on shell metacharacters so
 	// "sudo rm" and "rm" both match, and "rm" inside a filename does not.
 	// The list mirrors the unsafe verbs the system instruction itself
 	// teaches the model: a heuristic that skips verbs the prompt calls
-	// unsafe cannot catch the model under-reporting them.
-	tokens := tokenize(s)
-	for i, t := range tokens {
-		switch t {
-		case "rm", "rmdir", "dd", "mkfs", "mkfs.ext2", "mkfs.ext3", "mkfs.ext4",
-			"mkfs.vfat", "mkfs.ntfs", "shred", "fdisk", "parted", "pvremove",
-			"vgremove", "lvremove", "chmod", "chown", "chgrp", "shutdown", "reboot",
-			"halt", "poweroff", "kill", "killall", "pkill", "systemctl", "service",
-			"mv", "truncate":
-			// chmod/chown are only destructive with -R or on system files; we
-			// gate hard on the verb and let Safe-confirm do the rest. mv and
-			// truncate overwrite silently, exactly like the redirect case.
-			return true
-		}
-		// sudo / doas / runuser → anything escalated is unsafe by default.
-		if t == "sudo" || t == "doas" || t == "runuser" || t == "su" {
-			return true
+	// unsafe cannot catch the model under-reporting them. Segments are
+	// evaluated separately so git's subcommand can be found after the global
+	// options that would otherwise separate it from the "git" token.
+	for _, seg := range commandSegments(s) {
+		tokens := tokenize(seg)
+		for _, t := range tokens {
+			switch t {
+			case "rm", "rmdir", "dd", "mkfs", "mkfs.ext2", "mkfs.ext3", "mkfs.ext4",
+				"mkfs.vfat", "mkfs.ntfs", "shred", "fdisk", "parted", "pvremove",
+				"vgremove", "lvremove", "chmod", "chown", "chgrp", "shutdown", "reboot",
+				"halt", "poweroff", "kill", "killall", "pkill", "systemctl", "service",
+				"mv", "truncate":
+				// chmod/chown are only destructive with -R or on system files; we
+				// gate hard on the verb and let Safe-confirm do the rest. mv and
+				// truncate overwrite silently, exactly like the redirect case.
+				return true
+			}
+			// sudo / doas / runuser → anything escalated is unsafe by default.
+			if t == "sudo" || t == "doas" || t == "runuser" || t == "su" {
+				return true
+			}
 		}
 		// git push/reset/clean destroy remote state, uncommitted work, or
 		// untracked files — the system instruction already declares them
 		// unsafe, so the local gate must agree.
-		if (t == "push" || t == "reset" || t == "clean") && i > 0 && tokens[i-1] == "git" {
+		if gitDestroysState(tokens) {
 			return true
 		}
 	}
@@ -253,6 +265,29 @@ func requestBlock(req AskRequest, globs []string) string {
 	return b.String()
 }
 
+// unclosedCmdTag recovers the command from a <cmd> tag whose closing tag never
+// arrived. Only the tag's own line is used, because a truncated reply stops
+// mid-line; a partially emitted trailing tag ("<sa", "</cm") is stripped.
+func unclosedCmdTag(raw string) string {
+	i := strings.LastIndex(raw, "<cmd>")
+	if i < 0 {
+		return ""
+	}
+	rest := raw[i+len("<cmd>"):]
+	if nl := strings.IndexByte(rest, '\n'); nl >= 0 {
+		rest = rest[:nl]
+	}
+	rest = strings.TrimSpace(stripFences(rest))
+	if j := strings.LastIndex(rest, "<"); j >= 0 && !strings.Contains(rest[j:], ">") {
+		rest = strings.TrimSpace(rest[:j])
+	}
+	if rest == "" || !firstTokenIsCommandWord(rest) {
+		return ""
+	}
+	return rest
+}
+
+// firstCommandLine recovers a bare command when no <cmd> tag can be found.
 func firstCommandLine(raw string) string {
 	// strip common markdown fences first.
 	raw = stripFences(raw)
@@ -350,6 +385,101 @@ func tokenize(cmd string) []string {
 		}
 	}
 	return out
+}
+
+// commandSegments splits a command line on shell control operators (;, |, &,
+// newline) while leaving quoted spans intact, so each segment can be judged as
+// one command.
+func commandSegments(s string) []string {
+	var segs []string
+	var b strings.Builder
+	var quote byte
+	for i := 0; i < len(s); i++ {
+		c := s[i]
+		if quote != 0 {
+			b.WriteByte(c)
+			if c == quote {
+				quote = 0
+			}
+			continue
+		}
+		switch c {
+		case '\'', '"':
+			quote = c
+			b.WriteByte(c)
+		case ';', '|', '&', '\n':
+			segs = append(segs, b.String())
+			b.Reset()
+		default:
+			b.WriteByte(c)
+		}
+	}
+	return append(segs, b.String())
+}
+
+// gitDestroysState reports whether a segment runs git push/reset/clean. git
+// accepts global options (-C, -c, --git-dir, --no-pager, ...) before the
+// subcommand, so requiring the verb to sit next to the "git" token let
+// "git -C repo clean -fd" through ungated.
+func gitDestroysState(tokens []string) bool {
+	if len(tokens) == 0 || tokens[0] != "git" {
+		return false
+	}
+	for _, t := range tokens[1:] {
+		switch t {
+		case "push", "reset", "clean":
+			return true
+		}
+	}
+	return false
+}
+
+// hasTruncatingRedirect reports whether the command contains a single ">" that
+// truncates a file. Quoted text, append (">>"), descriptor dup (">&"), escaped
+// characters, and /dev/null targets (the conventional way to silence stderr)
+// do not truncate anything; every other ">" does, regardless of whether some
+// unrelated ">>" appears later in the command.
+func hasTruncatingRedirect(s string) bool {
+	var quote byte
+	for i := 0; i < len(s); i++ {
+		c := s[i]
+		if quote != 0 {
+			if c == '\\' && quote == '"' && i+1 < len(s) {
+				i++
+				continue
+			}
+			if c == quote {
+				quote = 0
+			}
+			continue
+		}
+		switch c {
+		case '\\':
+			i++
+		case '\'', '"':
+			quote = c
+		case '>':
+			if i+1 < len(s) && (s[i+1] == '>' || s[i+1] == '&') {
+				i++
+				continue
+			}
+			if redirectTarget(s[i+1:]) == "/dev/null" {
+				continue
+			}
+			return true
+		}
+	}
+	return false
+}
+
+// redirectTarget returns the filename a ">" redirect writes to: the next token,
+// stopping at whitespace or a shell metacharacter.
+func redirectTarget(rest string) string {
+	rest = strings.TrimLeft(rest, " \t")
+	if end := strings.IndexAny(rest, " \t\n|;&<>()"); end >= 0 {
+		rest = rest[:end]
+	}
+	return rest
 }
 
 func oneLineIntent(cmd string) string {

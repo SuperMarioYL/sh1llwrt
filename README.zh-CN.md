@@ -30,7 +30,7 @@ sh1llwrt 将请求与 Shell、工作目录、文件名上下文组合，向本�
   <img src="./assets/presentation/architecture-light.svg" width="960" alt="Architecture diagram">
 </picture>
 
-BuildPrompt 构建 Shell 请求；模型缓存为 CLIRunner 准备 GGUF，后者调用外部 llama-cli 进程。ParseReply 提取 command、safe、explain，Print、JSON 与内联插入集成器展示结果；插入路径对破坏性命令先做 y/N 确认。--mock 通过同一解析器处理确定性响应。
+BuildPrompt 构建 Shell 请求；模型缓存为 CLIRunner 准备 GGUF，后者调用外部 llama-cli 进程。ParseReply 提取 command、safe、explain，并在回复被截断、缺少结束标签时仍恢复命令；Print、JSON 与内联插入集成器展示结果；插入路径对破坏性命令先做 y/N 确认。--mock 通过同一解析器处理确定性响应。
 
 | 组件 | 职责 |
 | --- | --- |
@@ -135,7 +135,7 @@ SH1LLWRT_CACHE_DIR 选择 GGUF 缓存；SH1LLWRT_MODEL_URL 与 SH1LLWRT_MODEL_SH
 ## 限制与后续方向
 
 - 记录的建议来自关键词 mock 响应，不衡量模型质量、热缓存延迟或硬件性能。
-- safe 字段是响应提供的分类，不是独立安全检查。CLI 只打印或插入建议，绝不执行；--insert 在破坏性命令到达光标前先问 y/N。
+- safe 字段以模型自身的分类为起点，本地动词与重定向启发式只会让它更严格、绝不会更宽松；它仍是启发式判断而非保证。CLI 只打印或插入建议，绝不执行；--insert 在破坏性命令到达光标前先问 y/N。
 - 真实推理需要单独安装 llama.cpp CLI 和 GGUF。内置期望 SHA256 为空，须配置 SH1LLWRT_MODEL_SHA256 才会进行摘要核验。
 
 打包推理运行时与有代表性的命令质量基准仍是后续方向。光标插入已于 v0.2.0 发布（zsh `?` 经 print -z 插入；Ctrl-Space 在 zsh 与 bash 中重写当前行）。

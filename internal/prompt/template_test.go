@@ -182,3 +182,70 @@ func TestParseReplyHeuristicOverridesModelSafeTag(t *testing.T) {
 		t.Errorf("git reset --hard must be unsafe despite the model tag")
 	}
 }
+
+func TestParseReplyUnclosedCmdTag(t *testing.T) {
+	// A reply cut off before </cmd> — what the 96-token cap produces — still
+	// carries a complete command and must not be thrown away.
+	cases := map[string]string{
+		"<cmd>kubectl get pods -n kube-system":  "kubectl get pods -n kube-system",
+		"<cmd>tar -xzf foo.tar.gz -C /tmp\n<sa": "tar -xzf foo.tar.gz -C /tmp",
+		"Answer: <cmd>git status --short --bra": "git status --short --bra",
+	}
+	for raw, want := range cases {
+		r, err := ParseReply(raw)
+		if err != nil {
+			t.Errorf("ParseReply(%q): %v", raw, err)
+			continue
+		}
+		if r.Command != want {
+			t.Errorf("ParseReply(%q) command = %q, want %q", raw, r.Command, want)
+		}
+		if r.Safe {
+			t.Errorf("ParseReply(%q) must stay unsafe: no <safe> tag was received", raw)
+		}
+	}
+	// A reply that only mentions <cmd> with nothing after it is still not a
+	// command; keep the honest error.
+	if _, err := ParseReply("<cmd>"); err == nil {
+		t.Error("a bare <cmd> tag must not become a command")
+	}
+}
+
+func TestIsDestructiveRedirectStructure(t *testing.T) {
+	cases := map[string]bool{
+		// Harmless: descriptor dup, stderr discard, quoted ">", append only.
+		"find . -name '*.go' 2>/dev/null": false,
+		"cmd 2>&1":                        false,
+		"echo 'a > b'":                    false,
+		`echo "1 > 2"`:                    false,
+		"echo x >> log":                   false,
+		// Truncation: a single ">" is destructive even when ">>" appears too.
+		"echo hi >> log && echo x > cfg": true,
+		"cmd > file":                     true,
+		"cmd 2>err.log":                  true,
+		"echo hi > /etc/hosts":           true,
+	}
+	for cmd, want := range cases {
+		if got := IsDestructive(cmd); got != want {
+			t.Errorf("IsDestructive(%q) = %v, want %v", cmd, got, want)
+		}
+	}
+}
+
+func TestIsDestructiveGitGlobalOptions(t *testing.T) {
+	cases := map[string]bool{
+		"git -C /tmp/repo clean -fd":   true,
+		"git --no-pager reset --hard":  true,
+		"git -c core.pager=cat reset":  true,
+		"git --git-dir=/r/.git push":   true,
+		"git -c core.pager=cat branch": false,
+		"git log --grep=clean":         false,
+		"git status":                   false,
+		"git push":                     true,
+	}
+	for cmd, want := range cases {
+		if got := IsDestructive(cmd); got != want {
+			t.Errorf("IsDestructive(%q) = %v, want %v", cmd, got, want)
+		}
+	}
+}

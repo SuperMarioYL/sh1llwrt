@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.4.0] — 2026-11-21
+
+### Fixed
+
+- **A reply cut off before `</cmd>` no longer discards the command.** The 96-token generation cap routinely stops mid-line; the parser only accepted a closed `<cmd>…</cmd>` pair, then skipped the truncated command's own `<cmd>`-prefixed line, so `ask` exited with "no command found" and the zsh `?` alias inserted nothing. `ParseReply` now recovers the text after `<cmd>` on that line, strips a partially emitted tag, and keeps the command (safe stays false because no `<safe>` tag arrived).
+- **The destructive gate reads redirects structurally.** The old test was `strings.Contains(s, ">") && !strings.Contains(s, ">>")`: `find . -name '*.go' 2>/dev/null` and `echo 'a > b'` prompted `proceed? [y/N]`, while `echo hi >> log && echo x > cfg` was ungated because one `>>` vetoed the whole command. Redirects are now scanned outside quotes: append (`>>`), descriptor dup (`>&`) and `/dev/null` targets are safe, and any truncating `>` gates.
+- **git push/reset/clean are caught behind global options.** `git -C repo clean -fd` and `git --no-pager reset --hard` used to be classified safe because the rule required the verb to be the token immediately after `git`. The subcommand is now found anywhere in the git segment, so the local gate agrees with the prompt's own unsafe list.
+- **The installer uses the downloader it detected.** On a host with wget but no curl, `scripts/install.sh` resolved the release URL through wget and then ran `curl`, exiting 127 with "curl: command not found" after printing "downloading …". One downloader is now chosen for both requests, and the documented `go install` fallback runs when neither exists.
+
+### Docs
+
+- Both READMEs and the website now state the real safety model: `safe` starts as the model's classification and a local verb/redirect heuristic can only make it stricter, never safer. The architecture text also notes the truncation recovery. `web/site.json` content version is 0.4.0.
+
 ## [0.3.0] — 2026-10-18
 
 ### Fixed
