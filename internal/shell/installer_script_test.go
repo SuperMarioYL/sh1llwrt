@@ -34,8 +34,9 @@ func TestInstallerWgetOnlyPath(t *testing.T) {
 		}
 	}
 
-	// Only the utilities install.sh needs — notably no curl.
-	for _, name := range []string{"uname", "mkdir", "mktemp", "head", "sed", "grep", "tar", "mv", "chmod", "rm", "cat", "cp"} {
+	// Only the utilities install.sh needs — notably no curl. gzip is required
+	// by GNU tar, which shells out to decompress -z archives.
+	for _, name := range []string{"uname", "mkdir", "mktemp", "head", "sed", "grep", "tar", "mv", "chmod", "rm", "cat", "cp", "gzip"} {
 		p, err := exec.LookPath(name)
 		if err != nil {
 			t.Skipf("%s not available: %v", name, err)
